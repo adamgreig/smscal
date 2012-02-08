@@ -3,9 +3,11 @@ import sys
 import json
 import flask
 import urllib
-import pymongo
 import hashlib
+import pymongo
 import requests
+import datetime
+import dateutil
 
 app = flask.Flask(__name__)
 
@@ -90,6 +92,28 @@ def get_calendars(access_token):
         cals.append(cal)
     return cals
 
+def get_todays_events(access_token, cal_id):
+    url = "https://www.googleapis.com/calendar/v3/calendars/{0}/events"
+    url = url.format(cal_id)
+    params = {
+        'access_token': access_token,
+        'orderBy': 'startTime',
+        'singleEvents': 'true',
+        'timeMin': datetime.datetime.now().strftime("%Y-%m-%dT00:00:00Z"),
+        'timeMax': datetime.datetime.now().strftime("%y-%m-%dT23:59:59Z")
+    }
+    r = requests.get(url, params=params)
+    results = json.loads(r.text)
+    events = []
+    for item in results['items']:
+        start = dateutil.parser.parse(item['start']['dateTime'])
+        end = dateutil.parser.parse(item['end']['dateTime'])
+        start = start.strftime("%H:%M")
+        end = end.strftime("%H:%M")
+        name = item['summary']
+        events.append("{0}-{1}: {2}".format(start, end, name))
+    return events
+
 @app.route('/')
 def index():
     return flask.render_template('index.html', url=auth_url())
@@ -123,7 +147,7 @@ def setup():
         elif k == 'number':
             doc['number'] = v
         elif k == 'hour':
-            doc['house'] = v
+            doc['hour'] = v
         elif v == 'on':
             try:
                 doc['cals'][md5(k)]['active'] = True
@@ -131,6 +155,20 @@ def setup():
                 doc['cals'][md5(k)] = {'active': True, 'id': k}
     db.users.save(doc)
     return "Settings saved!"
+
+@app.route('/cron')
+def cron():
+    current_hour = datetime.datetime.now().hour
+    for user in db.users.find():
+        user_events = []
+        if str(user['hour']) == str(current_hour):
+            access_token = refresh_token(user['refresh_token'])
+            for cal in user['cals']:
+                if cal['active']:
+                    user_events.append(
+                        get_todays_events(cal['id'], access_token))
+    return str(user_events)
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
