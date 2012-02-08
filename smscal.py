@@ -2,6 +2,7 @@ import os
 import sys
 import flask
 import pymongo
+import secrets
 
 def setup_mongo():
     try:
@@ -20,10 +21,7 @@ db = setup_mongo()
 
 @app.route('/')
 def index():
-    string = ''
-    for user in db.users.find():
-        string += str(user)
-    return string
+    return flask.render_template('index.html')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
