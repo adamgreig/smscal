@@ -2,7 +2,6 @@ import os
 import sys
 import flask
 import pymongo
-import secrets
 
 def setup_mongo():
     try:
