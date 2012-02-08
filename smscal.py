@@ -62,7 +62,7 @@ def refresh_token(refresh_token):
     return results['access_token']
 
 def get_calendars(access_token):
-    url = "https://googleapis.com/calendar/v3/users/me/calendarList"
+    url = "https://www.googleapis.com/calendar/v3/users/me/calendarList"
     params = {'access_token': access_token}
     r = requests.get(url, params=params)
     result = json.loads(r.text)
