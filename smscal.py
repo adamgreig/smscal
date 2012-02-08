@@ -74,7 +74,7 @@ def oauth2callback():
     if not code:
         return "Authentication error: no code provided"
     tokens = code_for_token(code)
-    print "Got tokens: {0}".format(tokens)
+    return "Got tokens: {0}".format(tokens)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
