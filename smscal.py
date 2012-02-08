@@ -93,6 +93,11 @@ def oauth2callback():
     return flask.render_template('pick_cals.html', access_token=tokens[0],
                                   refresh_token=tokens[1], cals=cals)
 
+@app.route('/setup')
+def setup():
+    form = flask.request.form
+    return str(form)
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
