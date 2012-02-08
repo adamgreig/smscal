@@ -106,7 +106,7 @@ def oauth2callback():
     db.users.save(doc)
     return flask.render_template('pick_cals.html', cals=cals, user_id=user_id)
 
-@app.route('/setup', method='POST')
+@app.route('/setup', methods='POST')
 def setup():
     form = flask.request.form
     doc = db.users.find_one(form['user_id'])
