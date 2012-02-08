@@ -44,7 +44,7 @@ def code_for_token(code):
         'grant_type': 'authorization_code',
         'approval_prompt': 'force'
     }
-    r = requests.get(url, params=params)
+    r = requests.post(url, data=params)
     results = json.loads(r.text)
     access_token = results['access_token']
     refresh_token = results['refresh_token']
