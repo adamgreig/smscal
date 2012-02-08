@@ -163,7 +163,7 @@ def cron():
         user_events = []
         if str(user['hour']) == str(current_hour):
             access_token = refresh_token(user['refresh_token'])
-            for cal in user['cals']:
+            for cal in user['cals'].itervalues():
                 if cal['active']:
                     user_events.append(
                         get_todays_events(cal['id'], access_token))
