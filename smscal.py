@@ -4,6 +4,7 @@ import json
 import flask
 import urllib
 import pymongo
+import hashlib
 import requests
 
 app = flask.Flask(__name__)
@@ -14,6 +15,9 @@ def config_var(var):
     except KeyError:
         print "Could not find {0} in env, quitting.".format(var)
         sys.exit(1)
+
+def md5(string):
+    return hashlib.md5(string).hexdigest()
 
 def setup_mongo():
     uri = config_var('MONGOLAB_URI')
@@ -103,7 +107,7 @@ def oauth2callback():
     profile = get_profile(tokens[0])
     user_id = profile['id']
     doc = {'_id': user_id, 'profile': profile, 'refresh_token': tokens[1],
-           'cals': dict((c['id'], c) for c in cals)}
+           'cals': dict((md5(c['id']), c) for c in cals)}
     db.users.save(doc)
     return flask.render_template('pick_cals.html', cals=cals, user_id=user_id)
 
@@ -122,9 +126,9 @@ def setup():
             doc['house'] = v
         elif v == 'on':
             try:
-                doc['cals'][k]['active'] = True
+                doc['cals'][md5(k)]['active'] = True
             except KeyError:
-                doc['cals'][k] = {'active': True, 'id': k}
+                doc['cals'][md5(k)] = {'active': True, 'id': k}
     db.users.save(doc)
     return "Settings saved!"
 
