@@ -67,7 +67,7 @@ def refresh_token(refresh_token):
         'client_secret': config_var('GOOGLE_CLIENT_SECRET'),
         'grant_type': 'refresh_token'
     }
-    r = requests.get(url, params=params)
+    r = requests.post(url, data=params)
     results = json.loads(r.text)
     return results['access_token']
 
