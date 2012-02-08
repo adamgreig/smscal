@@ -78,7 +78,7 @@ def get_calendars(access_token):
     result = json.loads(r.text)
     cals = []
     for item in result['items']:
-        cal = {'id': item['id']}
+        cal = {'id': item['id'], 'active': False}
         if 'summaryOverride' in item:
             cal['name'] = item['summaryOverride']
         else:
@@ -102,7 +102,8 @@ def oauth2callback():
     cals = get_calendars(tokens[0])
     profile = get_profile(tokens[0])
     user_id = profile['id']
-    doc = {'_id': user_id, 'profile': profile, 'refresh_token': tokens[1]}
+    doc = {'_id': user_id, 'profile': profile, 'refresh_token': tokens[1],
+           'cals': dict((c['id'], c) for c in cals)}
     db.users.save(doc)
     return flask.render_template('pick_cals.html', cals=cals, user_id=user_id)
 
@@ -112,7 +113,20 @@ def setup():
     doc = db.users.find_one(form['user_id'])
     if not doc:
         return "User data not found. Please try again."
-    return str(doc) + str(form)
+    for k, v in form.iteritems():
+        if k == 'user_id':
+            continue
+        elif k == 'number':
+            doc['number'] = v
+        elif k == 'hour':
+            doc['house'] = v
+        elif v == 'on':
+            try:
+                doc['cals'][k]['active'] = True
+            except KeyError:
+                doc['cals'][k] = {'active': True, 'id': k}
+    db.users.save(doc)
+    return "Settings saved!"
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
