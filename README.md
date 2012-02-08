@@ -9,3 +9,4 @@ Heroku services required include Mongolab and Scheduler, SSL is recommended.
 Google client ID and secrets should be stored as heroku config vars:
 
     heroku config:add GOOGLE_CLIENT_ID=abc GOOGLE_CLIENT_SECRET=123
+    heroku config:add GOOGLE_REDIRECT_URI=https://example.com/oauth2callback
