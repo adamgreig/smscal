@@ -30,7 +30,7 @@ def auth_url():
         'redirect_uri': config_var('GOOGLE_REDIRECT_URI'),
         'scope': 'https://www.googleapis.com/auth/calendar.readonly',
         'access_type': 'offline',
-        'approval_prompt': 'auto'
+        'approval_prompt': 'force'
     }
     return "{0}?{1}".format(url, urllib.urlencode(params))
 
@@ -41,8 +41,7 @@ def code_for_token(code):
         'client_id': config_var('GOOGLE_CLIENT_ID'),
         'client_secret': config_var('GOOGLE_CLIENT_SECRET'),
         'redirect_uri': config_var('GOOGLE_REDIRECT_URI'),
-        'grant_type': 'authorization_code',
-        'approval_prompt': 'force'
+        'grant_type': 'authorization_code'
     }
     r = requests.post(url, data=params)
     results = json.loads(r.text)
