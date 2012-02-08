@@ -1,3 +1,3 @@
 venv/
 *.pyc
-secrets.py
+export_secrets.sh
