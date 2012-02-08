@@ -69,7 +69,7 @@ def get_calendars(access_token):
     cals = []
     for item in result['items']:
         cal = {'id': item['id']}
-        if item['summaryOverride']:
+        if 'summaryOverride' in item:
             cal['name'] = item['summaryOverride']
         else:
             cal['name'] = item['summary']
