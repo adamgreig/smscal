@@ -61,6 +61,21 @@ def refresh_token(refresh_token):
     results = json.loads(r.text)
     return results['access_token']
 
+def get_calendars(access_token):
+    url = "https://googleapis.com/calendar/v3/users/me/calendarList"
+    params = {'access_token': access_token}
+    r = requests.get(url, params=params)
+    result = json.loads(r.text)
+    cals = []
+    for item in result['items']:
+        cal = {'id': item['id']}
+        if item['summaryOverride']:
+            cal['name'] = item['summaryOverride']
+        else:
+            cal['name'] = item['summary']
+        cals.append(cal)
+    return cals
+
 @app.route('/')
 def index():
     return flask.render_template('index.html', url=auth_url())
@@ -74,7 +89,9 @@ def oauth2callback():
     if not code:
         return "Authentication error: no code provided"
     tokens = code_for_token(code)
-    return "Got tokens: {0}".format(tokens)
+    cals = get_calendars(tokens[0])
+    return flask.render_template('pick_cals.html', access_token=tokens[0],
+                                  refresh_token=tokens[1], cals=cals)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

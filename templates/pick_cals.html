@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+Please select the calendars to include:<br />
+<form method="post" action="/setup">
+    <input type="hidden" name="access_token" value="{{ access_token }}" />
+    <input type="hidden" name="refresh_token" value="{{ refresh_token }}" />
+    {% for cal in cals %}
+        <input type="checkbox" name="{{ cal.id }}" id="{{ cal.id }}"/>
+        <label for="{{ cal.id }}">{{ cal.name }}</label><br />
+    {% endfor %}
+    <br />
+    <input type="submit" />
+</form>
