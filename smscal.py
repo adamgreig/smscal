@@ -22,13 +22,17 @@ def setup_mongo():
     db = con[dbname]
     return db
 
+db = setup_mongo()
+
 def auth_url():
     url = "https://accounts.google.com/o/oauth2/auth"
+    scope_user = "https://www.googleapis.com/auth/userinfo.profile"
+    scope_cal = "https://www.googleapis.com/auth/calendar.readonly"
     params = {
         'response_type': 'code',
         'client_id': config_var('GOOGLE_CLIENT_ID'),
         'redirect_uri': config_var('GOOGLE_REDIRECT_URI'),
-        'scope': 'https://www.googleapis.com/auth/calendar.readonly',
+        'scope': '{0} {1}'.format(scope_cal, scope_user),
         'access_type': 'offline',
         'approval_prompt': 'force'
     }
@@ -61,6 +65,12 @@ def refresh_token(refresh_token):
     results = json.loads(r.text)
     return results['access_token']
 
+def get_profile(access_token):
+    url = "https://www.googleapis.com/oauth2/v1/userinfo"
+    params = {'access_token': access_token}
+    r = requests.get(url, params=params)
+    return json.loads(r.text)
+
 def get_calendars(access_token):
     url = "https://www.googleapis.com/calendar/v3/users/me/calendarList"
     params = {'access_token': access_token}
@@ -90,13 +100,19 @@ def oauth2callback():
         return "Authentication error: no code provided"
     tokens = code_for_token(code)
     cals = get_calendars(tokens[0])
-    return flask.render_template('pick_cals.html', access_token=tokens[0],
-                                  refresh_token=tokens[1], cals=cals)
+    profile = get_profile(tokens[0])
+    user_id = profile['id']
+    doc = {'_id': user_id, 'profile': profile, 'refresh_token': tokens[1]}
+    db.users.save(doc)
+    return flask.render_template('pick_cals.html', cals=cals, user_id=user_id)
 
-@app.route('/setup')
+@app.route('/setup', method='POST')
 def setup():
     form = flask.request.form
-    return str(form)
+    doc = db.users.find_one(form['user_id'])
+    if not doc:
+        return "User data not found. Please try again."
+    return str(doc) + str(form)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
