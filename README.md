@@ -14,3 +14,4 @@ Google client ID and secrets should be stored as heroku config vars:
 Twilio credentials also to be stored as config vars:
 
     heroku config:add TWILIO_ACCOUNT=123 TWILIO_TOKEN=abc
+    heroku config:add TWILIO_NUMBER=+44123456789

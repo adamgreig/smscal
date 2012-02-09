@@ -1,0 +1,2 @@
+import smscal
+smscal.cron()

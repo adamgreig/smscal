@@ -7,7 +7,7 @@ import hashlib
 import pymongo
 import requests
 import datetime
-import dateutil
+import dateutil.parser
 
 app = flask.Flask(__name__)
 
@@ -94,25 +94,52 @@ def get_calendars(access_token):
 
 def get_todays_events(access_token, cal_id):
     url = "https://www.googleapis.com/calendar/v3/calendars/{0}/events"
-    url = url.format(cal_id)
+    url = url.format(urllib.quote_plus(cal_id))
     params = {
         'access_token': access_token,
         'orderBy': 'startTime',
         'singleEvents': 'true',
         'timeMin': datetime.datetime.now().strftime("%Y-%m-%dT00:00:00Z"),
-        'timeMax': datetime.datetime.now().strftime("%y-%m-%dT23:59:59Z")
+        'timeMax': datetime.datetime.now().strftime("%Y-%m-%dT23:59:59Z")
     }
-    r = requests.get(url, params=params)
-    results = json.loads(r.text)
+    url = "{0}?{1}".format(url, urllib.urlencode(params))
+    r = urllib.urlopen(url)
+    results = json.loads(r.read())
     events = []
+    if 'items' not in results:
+        return events
     for item in results['items']:
-        start = dateutil.parser.parse(item['start']['dateTime'])
-        end = dateutil.parser.parse(item['end']['dateTime'])
-        start = start.strftime("%H:%M")
-        end = end.strftime("%H:%M")
+        if 'date' in item['start']:
+            time = -1
+        else:
+            start = dateutil.parser.parse(item['start']['dateTime'])
+            if start.minute == 0:
+                time = start.strftime("%H")
+            else:
+                time = start.strftime("%H.%M")
         name = item['summary']
-        events.append("{0}-{1}: {2}".format(start, end, name))
+        events.append((time, name))
     return events
+
+def events_to_texts(events):
+    events = ["{0}: {1}".format(*e) if e[0] != -1 else e[1] for e in events]
+    build = "Today: {0}".format(events[0])
+    texts = []
+    for event in events[1:]:
+        if len(build) + len(event) > 158:
+            texts.append(build)
+            build = event
+        else:
+            build += ", {0}".format(event)
+    return texts + [build]
+
+def send_text(number, message):
+    url = "https://api.twilio.com/2010-04-01/Accounts/{0}/SMS/Messages"
+    url = url.format(config_var('TWILIO_ACCOUNT'))
+    params = {'From': config_var('TWILIO_NUMBER'),
+            'To': number, 'Body': message}
+    requests.post(url, data=params, auth=(config_var('TWILIO_ACCOUNT'),
+                      config_var('TWILIO_TOKEN')))
 
 @app.route('/')
 def index():
@@ -160,14 +187,17 @@ def setup():
 def cron():
     current_hour = datetime.datetime.now().hour
     for user in db.users.find():
-        user_events = []
-        if str(user['hour']) == str(current_hour):
+        if int(user['hour']) == int(current_hour):
+            user_events = []
             access_token = refresh_token(user['refresh_token'])
             for cal in user['cals'].itervalues():
                 if cal['active']:
-                    user_events.append(
-                        get_todays_events(cal['id'], access_token))
-    return str(user_events)
+                    user_events += get_todays_events(access_token, cal['id'])
+            user_events.sort()
+            texts = events_to_texts(user_events)
+            for text in texts:
+                send_text(user['number'], text)
+    return "OK"
 
 
 if __name__ == '__main__':
