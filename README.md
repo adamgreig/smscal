@@ -15,3 +15,15 @@ Twilio credentials also to be stored as config vars:
 
     heroku config:add TWILIO_ACCOUNT=123 TWILIO_TOKEN=abc
     heroku config:add TWILIO_NUMBER=+44123456789
+
+For local testing, you could use something like:
+
+    $ cat export_config.sh
+    export GOOGLE_CLIENT_ID=abc
+    ...etc
+    $ source export_config.sh
+    $ python smscal.py
+
+Add an hourly scheduler job at zero minutes past the hour running:
+
+    $ python cron.py
