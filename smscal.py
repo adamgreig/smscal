@@ -141,6 +141,15 @@ def send_text(number, message):
     requests.post(url, data=params, auth=(config_var('TWILIO_ACCOUNT'),
                       config_var('TWILIO_TOKEN')))
 
+def texts_for_user(user):
+    user_events = []
+    access_token = refresh_token(user['refresh_token'])
+    for cal in user['cals'].itervalues():
+        if cal['active']:
+            user_events += get_todays_events(access_token, cal['id'])
+    user_events.sort()
+    return events_to_texts(user_events)
+
 @app.route('/')
 def index():
     return flask.render_template('index.html', url=auth_url())
@@ -188,17 +197,25 @@ def cron():
     current_hour = datetime.datetime.now().hour
     for user in db.users.find():
         if int(user['hour']) == int(current_hour):
-            user_events = []
-            access_token = refresh_token(user['refresh_token'])
-            for cal in user['cals'].itervalues():
-                if cal['active']:
-                    user_events += get_todays_events(access_token, cal['id'])
-            user_events.sort()
-            texts = events_to_texts(user_events)
-            for text in texts:
+            for text in texts_for_user(user):
                 send_text(user['number'], text)
     return "OK"
 
+@app.route('/ringring/<user>')
+def ringring(user):
+    doc = db.users.find_one(user)
+    if not doc:
+        resp = "<Response><Say>Sorry, user not found.</Say></Response>"
+    else:
+        say = ' '.join(texts_for_user(doc))
+        resp = "<Response><Say voice=\"woman\">"
+        resp += "Good Morning! Your schedule for "
+        resp += say + ". Have a good day!</Say></Response>"
+    xml = '<?xml version="1.0" encoding="UTF-8"?>'
+    xml += "\n" + resp
+    resp = flask.make_response(resp)
+    resp.headers['Content-Type'] = 'application/xml'
+    return resp
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
