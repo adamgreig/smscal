@@ -236,20 +236,18 @@ def ringring():
 @app.route('/text')
 def text():
     args = flask.request.args
-    doc = db.users.find_one({'number': args['From']})
+    number = args['From']
+    doc = db.users.find_one({'number': number})
     if not doc:
-        resp = "<Response><Sms>Sorry, your details could not be found."
-        resp += " Register at smscal.heroku.com</Sms></Response>"
+        msg = "Sorry, your details could not be found. "
+        msg += "Register at smscal.heroku.com"
+        send_text(number, msg)
     else:
         date = datetime_parser(args['Body'])
         header = date.strftime("%Y-%m-%d: ")
-        words = ', '.join(texts_for_user(doc, date, header))
-        resp = "<Response><Sms>" + words + "</Sms></Response>"
-    xml = '<?xml version="1.0" encoding="UTF-8"?>'
-    xml += "\n" + resp
-    resp = flask.make_response(resp)
-    resp.headers['Content-Type'] = 'application/xml'
-    return resp
+        for text in texts_for_user(doc, date, header):
+            send_text(number, text)
+    return ""
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
