@@ -201,9 +201,10 @@ def cron():
                 send_text(user['number'], text)
     return "OK"
 
-@app.route('/ringring/<user>')
-def ringring(user):
-    doc = db.users.find_one(user)
+@app.route('/ringring')
+def ringring():
+    args = flask.request.args
+    doc = db.users.find_one(number=args['From'])
     if not doc:
         resp = "<Response><Say>Sorry, user not found.</Say></Response>"
     else:
