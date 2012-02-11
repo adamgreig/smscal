@@ -8,6 +8,8 @@ import pymongo
 import requests
 import datetime
 import dateutil.parser
+import parsedatetime.parsedatetime
+import parsedatetime.parsedatetime_consts
 
 app = flask.Flask(__name__)
 
@@ -29,6 +31,18 @@ def setup_mongo():
     return db
 
 db = setup_mongo()
+
+def setup_parsedatetime():
+    pdt = parsedatetime.parsedatetime
+    pdc = parsedatetime.parsedatetime_consts
+    c = pdc.Constants(fallbackLocales=['en_AU'])
+    def parse(string):
+        p = pdt.Calendar(c)
+        result = p.parse(string)
+        return datetime.datetime(*result[0][:6])
+    return parse
+
+datetime_parser = setup_parsedatetime()
 
 def auth_url():
     url = "https://accounts.google.com/o/oauth2/auth"
@@ -204,7 +218,7 @@ def cron():
 @app.route('/ringring')
 def ringring():
     args = flask.request.args
-    doc = db.users.find_one(number=args['From'])
+    doc = db.users.find_one({'number': args['From']})
     if not doc:
         resp = "<Response><Say>Sorry, user not found.</Say></Response>"
     else:
