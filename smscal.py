@@ -106,15 +106,16 @@ def get_calendars(access_token):
         cals.append(cal)
     return cals
 
-def get_todays_events(access_token, cal_id):
+def get_todays_events(access_token, cal_id, date=None):
     url = "https://www.googleapis.com/calendar/v3/calendars/{0}/events"
     url = url.format(urllib.quote_plus(cal_id))
+    day = datetime.datetime.now() if date is None else date
     params = {
         'access_token': access_token,
         'orderBy': 'startTime',
         'singleEvents': 'true',
-        'timeMin': datetime.datetime.now().strftime("%Y-%m-%dT00:00:00Z"),
-        'timeMax': datetime.datetime.now().strftime("%Y-%m-%dT23:59:59Z")
+        'timeMin': day.strftime("%Y-%m-%dT00:00:00Z"),
+        'timeMax': day.strftime("%Y-%m-%dT23:59:59Z")
     }
     url = "{0}?{1}".format(url, urllib.urlencode(params))
     r = urllib.urlopen(url)
@@ -135,9 +136,9 @@ def get_todays_events(access_token, cal_id):
         events.append((time, name))
     return events
 
-def events_to_texts(events):
+def events_to_texts(events, header='Today: '):
     events = ["{0}: {1}".format(*e) if e[0] != -1 else e[1] for e in events]
-    build = "Today: {0}".format(events[0])
+    build = "{0}{1}".format(header, events[0])
     texts = []
     for event in events[1:]:
         if len(build) + len(event) > 158:
@@ -155,14 +156,14 @@ def send_text(number, message):
     requests.post(url, data=params, auth=(config_var('TWILIO_ACCOUNT'),
                       config_var('TWILIO_TOKEN')))
 
-def texts_for_user(user):
+def texts_for_user(user, date=None, header=None):
     user_events = []
     access_token = refresh_token(user['refresh_token'])
     for cal in user['cals'].itervalues():
         if cal['active']:
-            user_events += get_todays_events(access_token, cal['id'])
+            user_events += get_todays_events(access_token, cal['id'], date)
     user_events.sort()
-    return events_to_texts(user_events)
+    return events_to_texts(user_events, header)
 
 @app.route('/')
 def index():
@@ -222,10 +223,28 @@ def ringring():
     if not doc:
         resp = "<Response><Say>Sorry, user not found.</Say></Response>"
     else:
-        say = ' '.join(texts_for_user(doc))
+        say = ', '.join(texts_for_user(doc))
         resp = "<Response><Say voice=\"woman\">"
         resp += "Good Morning! Your schedule for "
         resp += say + ". Have a good day!</Say></Response>"
+    xml = '<?xml version="1.0" encoding="UTF-8"?>'
+    xml += "\n" + resp
+    resp = flask.make_response(resp)
+    resp.headers['Content-Type'] = 'application/xml'
+    return resp
+
+@app.route('/text')
+def text():
+    args = flask.request.args
+    doc = db.users.find_one({'number': args['From']})
+    if not doc:
+        resp = "<Response><Sms>Sorry, your details could not be found."
+        resp += " Register at smscal.heroku.com</Sms></Response>"
+    else:
+        date = datetime_parser(args['Body'])
+        header = date.strftime("%Y-%m-%d: ")
+        words = ', '.join(texts_for_user(doc, date, header))
+        resp = "<Response><Sms>" + words + "</Sms></Response>"
     xml = '<?xml version="1.0" encoding="UTF-8"?>'
     xml += "\n" + resp
     resp = flask.make_response(resp)
