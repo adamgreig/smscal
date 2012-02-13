@@ -156,7 +156,7 @@ def send_text(number, message):
     requests.post(url, data=params, auth=(config_var('TWILIO_ACCOUNT'),
                       config_var('TWILIO_TOKEN')))
 
-def texts_for_user(user, date=None, header=None):
+def texts_for_user(user, date=None, header='Today: '):
     user_events = []
     access_token = refresh_token(user['refresh_token'])
     for cal in user['cals'].itervalues():
